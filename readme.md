@@ -4,6 +4,11 @@ Laravel-style CLI framework for Spring Boot projects.
 
 > Build Java APIs the Laravel way.
 
+![license](https://img.shields.io/github/license/seu-usuario/javel)
+![node](https://img.shields.io/badge/node-%3E%3D18-brightgreen)
+![java](https://img.shields.io/badge/java-%3E%3D17-orange)
+![maven](https://img.shields.io/badge/maven-%3E%3D3.8-blue)
+
 ## Requirements
 
 - Node.js 18+
@@ -70,9 +75,9 @@ my-project/
         model/
         service/
         repository/
+        migration/
       resources/
         application.properties
-        db/migration/
   pom.xml
 ```
 

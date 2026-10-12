@@ -1,6 +1,6 @@
 {
   "name": "javel",
-  "version": "0.1.0",
+  "version": "0.0.1",
   "description": "Laravel-style CLI for Spring Boot projects",
   "main": "dist/index.js",
   "bin": {
