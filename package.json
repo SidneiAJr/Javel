@@ -1,0 +1,38 @@
+{
+  "name": "javel",
+  "version": "0.1.0",
+  "description": "Laravel-style CLI for Spring Boot projects",
+  "main": "dist/index.js",
+  "bin": {
+    "javel": "./bin/javel.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "ts-node src/index.ts",
+    "prepublishOnly": "npm run build"
+  },
+  "keywords": [
+    "java",
+    "spring-boot",
+    "laravel",
+    "cli",
+    "scaffold",
+    "framework"
+  ],
+  "author": "Sidneiajr",
+  "license": "MIT",
+  "dependencies": {
+    "commander": "latest",
+    "chalk": "latest",
+    "fs-extra": "latest",
+    "mysql2": "latest",
+    "pg": "latest"
+  },
+  "devDependencies": {
+    "@types/fs-extra": "latest",
+    "@types/node": "latest",
+    "typescript": "latest",
+    "ts-node": "latest",
+    "@types/pg": "latest"
+  }
+}

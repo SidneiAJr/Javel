@@ -1,0 +1,25 @@
+# Compilado
+dist/
+
+# Dependências
+node_modules/
+
+# Ambiente
+.env
+.env.*
+
+# TypeScript
+*.tsbuildinfo
+
+# Logs
+*.log
+npm-debug.log*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+.vscode/
+*.iml
