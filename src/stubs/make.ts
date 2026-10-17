@@ -49,10 +49,10 @@ export async function getStub(type: StubType, name: string): Promise<StubResult>
       const path = `${getPackagePath(baseGroupId, 'repository')}/${name}Repository.java`;
       return { path, content: repositoryStub(name, pkg, baseGroupId) };
     },
-  migration: () => ({
-  path: `src/main/java/${baseGroupId.replace(/\./g, '/')}/migration/${name}.java`,
-  content: migrationStub(name, baseGroupId),
-}),
+    migration: () => ({
+      path: `src/main/java/${baseGroupId.replace(/\./g, '/')}/migration/${name}.java`,
+      content: migrationStub(name, baseGroupId),
+    }),
     db: () => ({
       path: `src/main/resources/application.properties`,
       content: dbStub(name),

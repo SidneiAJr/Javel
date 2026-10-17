@@ -107,7 +107,7 @@ function pomXml(name: string, groupId: string): string {
 
     <!-- javel-migration -->
     <dependency>
-      <groupId>com.javel</groupId>
+      <groupId>io.github.sidneiajr</groupId>
       <artifactId>javel-migration</artifactId>
       <version>0.0.1</version>
     </dependency>
