@@ -10,20 +10,20 @@ function runMavenExec(goal: string, label: string): void {
     [
       'compile',
       'exec:java',
-      `-Dexec.mainClass=com.javel.MigrationCLI`,
+      '-Dexec.mainClass=com.javel.MigrationCLI',
       `-Dexec.args=${goal}`,
-      `-Dexec.classpathScope=runtime`,
+      '-Dexec.classpathScope=runtime',
     ],
     { stdio: 'inherit', shell: true }
   );
 
   proc.on('error', (err) => {
-    console.error(chalk.red(`✖ Erro: ${err.message}`));
+    console.error(chalk.red(`Erro / Error: ${err.message}`));
   });
 
   proc.on('close', (code) => {
     if (code !== 0) {
-      console.log(chalk.red(`\nSaiu com código ${code}`));
+      console.log(chalk.red(`\nFalhou com codigo / Failed with code: ${code}`));
     }
   });
 }
@@ -31,11 +31,11 @@ function runMavenExec(goal: string, label: string): void {
 export function registerMigrateCommand(program: Command): void {
   program
     .command('migrate')
-    .description('Roda as migrations pendentes')
-    .action(() => runMavenExec('migrate', 'Rodando migrations'));
+    .description('Roda as migrations pendentes / Run pending migrations')
+    .action(() => runMavenExec('migrate', 'Rodando migrations / Running migrations'));
 
   program
     .command('migrate:rollback')
-    .description('Reverte a última migration')
-    .action(() => runMavenExec('rollback', 'Revertendo última migration'));
+    .description('Reverte a ultima migration / Rollback last migration')
+    .action(() => runMavenExec('rollback', 'Revertendo / Rolling back'));
 }

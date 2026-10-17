@@ -171,8 +171,14 @@ import java.util.List;
 @Configuration
 public class JavelConfig {
 
+    private final DataSource dataSource;
+
+    public JavelConfig(DataSource dataSource) {
+        this.dataSource = dataSource;
+    }
+
     @Bean
-    public MigrationRunner migrationRunner(DataSource dataSource) {
+    public MigrationRunner migrationRunner() {
         return new MigrationRunner(dataSource, List.of(
             // Registre suas migrations aqui em ordem:
             // new CreateUsersTable()
@@ -181,7 +187,7 @@ public class JavelConfig {
 
     @EventListener(ApplicationReadyEvent.class)
     public void migrate() throws SQLException {
-        migrationRunner(null).run();
+        migrationRunner().run();
     }
 }`;
 }
