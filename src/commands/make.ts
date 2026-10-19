@@ -1,4 +1,3 @@
-import chalk from 'chalk';
 import { Command } from 'commander';
 import { getStub } from '../stubs';
 import { writeFile, parseApplicationProperties } from '../utils/fs';
@@ -16,9 +15,9 @@ export function registerMakeCommand(program: Command): void {
         try {
           const { path, content } = await getStub(type, name);
           await writeFile(path, content);
-          console.log(chalk.green(`✔ Created`) + ` ${path}`);
+          console.log(`✔ Created ${path}`);
         } catch (err: any) {
-          console.error(chalk.red(`✖ Error: ${err.message}`));
+          console.error(`✖ Error: ${err.message}`);
         }
       });
   }
@@ -30,9 +29,9 @@ export function registerMakeCommand(program: Command): void {
       try {
         const { path, content } = await getStub('db', driver);
         await writeFile(path, content);
-        console.log(chalk.green(`✔ Created`) + ` ${path}`);
+        console.log(`✔ Created ${path}`);
       } catch (err: any) {
-        console.error(chalk.red(`✖ Error: ${err.message}`));
+        console.error(`✖ Error: ${err.message}`);
       }
     });
 
@@ -45,26 +44,26 @@ export function registerMakeCommand(program: Command): void {
         const config = extractDbConfig(props);
 
         if (config.driver === 'h2') {
-          console.log(chalk.yellow('⚠ H2 não precisa de criação manual — o banco é criado automaticamente.'));
+          console.log('⚠ H2 não precisa de criação manual — o banco é criado automaticamente.');
           return;
         }
 
-        console.log(chalk.cyan(`→ Creating database "${chalk.bold(config.database)}"...`));
+        console.log(`→ Creating database "${config.database}"...`);
 
         try {
           const { skipped } = await createDatabase(config);
 
           if (skipped) {
-            console.log(chalk.yellow(`⚠ Banco "${config.database}" é gerenciado automaticamente.`));
+            console.log(`⚠ Banco "${config.database}" é gerenciado automaticamente.`);
           } else {
-            console.log(chalk.green(`✔ Banco "${config.database}" criado com sucesso!`));
+            console.log(`✔ Banco "${config.database}" criado com sucesso!`);
           }
         } catch (err: any) {
-          console.error(chalk.red(`✖ Falha ao criar o banco: ${err.message}`));
+          console.error(`✖ Falha ao criar o banco: ${err.message}`);
           process.exit(1);
         }
       } catch (err: any) {
-        console.error(chalk.red(`✖ Error: ${err.message}`));
+        console.error(`✖ Error: ${err.message}`);
         process.exit(1);
       }
     });
@@ -77,11 +76,11 @@ export function registerMakeCommand(program: Command): void {
         const files = await getApiStubs(name);
         for (const { path, content } of files) {
           await writeFile(path, content);
-          console.log(chalk.green(`✔ Created`) + ` ${path}`);
+          console.log(`✔ Created ${path}`);
         }
-        console.log(chalk.cyan(`\n✔ API ${name} generated!\n`));
+        console.log(`\n✔ API ${name} generated!\n`);
       } catch (err: any) {
-        console.error(chalk.red(`✖ Error: ${err.message}`));
+        console.error(`✖ Error: ${err.message}`);
       }
     });
 }

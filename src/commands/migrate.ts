@@ -1,9 +1,8 @@
-import chalk from 'chalk';
 import { spawn } from 'child_process';
 import { Command } from 'commander';
 
 function runMavenExec(goal: string, label: string): void {
-  console.log(chalk.cyan(`${label}...\n`));
+  console.log(`${label}...\n`);
 
   const proc = spawn(
     'mvn',
@@ -18,12 +17,12 @@ function runMavenExec(goal: string, label: string): void {
   );
 
   proc.on('error', (err) => {
-    console.error(chalk.red(`Erro / Error: ${err.message}`));
+    console.error(`Erro / Error: ${err.message}`);
   });
 
   proc.on('close', (code) => {
     if (code !== 0) {
-      console.log(chalk.red(`\nFalhou com codigo / Failed with code: ${code}`));
+      console.log(`\nFalhou com codigo / Failed with code: ${code}`);
     }
   });
 }

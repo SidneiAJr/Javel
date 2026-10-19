@@ -23,7 +23,6 @@
   "license": "MIT",
   "dependencies": {
     "commander": "latest",
-    "chalk": "latest",
     "fs-extra": "latest",
     "mysql2": "latest",
     "pg": "latest"
@@ -31,8 +30,8 @@
   "devDependencies": {
     "@types/fs-extra": "latest",
     "@types/node": "latest",
-    "typescript": "latest",
+    "@types/pg": "latest",
     "ts-node": "latest",
-    "@types/pg": "latest"
+    "typescript": "latest"
   }
 }

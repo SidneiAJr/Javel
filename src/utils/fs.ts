@@ -16,8 +16,6 @@ export async function writeFile(filePath: string, content: string): Promise<void
   await fsExtra.writeFile(filePath, content, 'utf-8');
 }
 
-// ---- Novas funções ----
-
 export async function readFile(filePath: string): Promise<string> {
   return fsExtra.readFile(filePath, 'utf-8');
 }
@@ -26,11 +24,6 @@ export async function fileExists(filePath: string): Promise<boolean> {
   return fsExtra.pathExists(filePath);
 }
 
-/**
- * Lê o pom.xml da raiz do projeto atual e extrai o groupId.
- * Ignora o groupId do <parent> (que é do Spring Boot) e pega o do projeto.
- * Retorna null se o pom.xml não existir ou não tiver groupId.
- */
 export async function getProjectGroupId(): Promise<string | null> {
   const pomPath = path.join(process.cwd(), 'pom.xml');
   if (!(await fileExists(pomPath))) return null;
@@ -39,15 +32,9 @@ export async function getProjectGroupId(): Promise<string | null> {
   const matches = Array.from(content.matchAll(/<groupId>(.*?)<\/groupId>/g), m => m[1]);
 
   if (matches.length === 0) return null;
-  // O primeiro groupId é do <parent> (Spring Boot). O do projeto é o segundo.
-  // Se só tiver um, é porque não tem parent — usa ele mesmo.
   return matches.length > 1 ? matches[1] : matches[0];
 }
 
-/**
- * Lê o application.properties da raiz do projeto atual e retorna um objeto chave/valor.
- * Ignora linhas comentadas (# ...) e linhas vazias.
- */
 export async function parseApplicationProperties(): Promise<Record<string, string>> {
   const propsPath = path.join(
     process.cwd(),
@@ -76,4 +63,70 @@ export async function parseApplicationProperties(): Promise<Record<string, strin
   }
 
   return result;
+}
+
+export async function parseMigrationFields(
+  name: string,
+  groupId: string
+): Promise<string[]> {
+  const migrationDir = path.join(
+    process.cwd(),
+    `src/main/java/${groupId.replace(/\./g, '/')}/migration`
+  );
+
+  if (!(await fileExists(migrationDir))) return [];
+
+  // Varre todos os .java da pasta migration
+  const files = await fsExtra.readdir(migrationDir);
+  const tableName = name.toLowerCase() + 's';
+
+  let content: string | null = null;
+
+  for (const file of files) {
+    if (!file.endsWith('.java')) continue;
+    const raw = await readFile(path.join(migrationDir, file));
+    // Procura qualquer migration que crie a tabela do model
+    if (raw.includes(`"${tableName}"`) || raw.includes(`'${tableName}'`)) {
+      content = raw;
+      break;
+    }
+  }
+
+  if (!content) return [];
+
+  const lambdaMatch = content.match(
+    /schema\.create\(\s*["'][^"']+["']\s*,\s*(?:table|\w+)\s*->\s*\{([\s\S]*?)\}\s*\)/
+  );
+  if (!lambdaMatch) return [];
+
+  const body = lambdaMatch[1];
+
+  const typeMap: Record<string, string> = {
+    string:     'String',
+    text:       'String',
+    integer:    'Integer',
+    bigInteger: 'Long',
+    bool:       'Boolean',
+    boolean:    'Boolean',
+    decimal:    'Double',
+    float:      'Float',
+    date:       'java.time.LocalDate',
+    dateTime:   'java.time.LocalDateTime',
+    timestamp:  'java.time.LocalDateTime',
+  };
+
+  const fields: string[] = [];
+
+  const lineRegex = /table\.(\w+)\(\s*["'](\w+)["']/g;
+  let match;
+  while ((match = lineRegex.exec(body)) !== null) {
+    const [, method, fieldName] = match;
+    const javaType = typeMap[method];
+    if (!javaType) continue;
+
+    const camel = fieldName.replace(/_([a-z])/g, (_, l) => l.toUpperCase());
+    fields.push(`  private ${javaType} ${camel};`);
+  }
+
+  return fields;
 }

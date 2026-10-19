@@ -1,4 +1,4 @@
-import { getProjectGroupId } from '../utils/fs';
+import { getProjectGroupId, parseMigrationFields } from '../utils/fs';
 
 type StubType = 'controller' | 'model' | 'service' | 'repository' | 'migration' | 'db' | 'api';
 
@@ -7,7 +7,6 @@ interface StubResult {
   content: string;
 }
 
-// Helpers para montar caminho e nome do pacote
 function getPackagePath(groupId: string, subPackage: string): string {
   const basePath = groupId.replace(/\./g, '/');
   return `src/main/java/${basePath}/${subPackage}`;
@@ -28,21 +27,25 @@ export async function getStub(type: StubType, name: string): Promise<StubResult>
 
   const baseGroupId = groupId || 'com.example';
 
-  const stubs: Record<StubType, () => StubResult> = {
+  if (type === 'model') {
+    const pkg = getPackageName(baseGroupId, 'model');
+    const path = `${getPackagePath(baseGroupId, 'model')}/${name}.java`;
+    const fields = await parseMigrationFields(name, baseGroupId);
+    return { path, content: modelStub(name, pkg, fields) };
+  }
+
+  if (type === 'service') {
+    const pkg = getPackageName(baseGroupId, 'service');
+    const path = `${getPackagePath(baseGroupId, 'service')}/${name}Service.java`;
+    const fields = await parseMigrationFields(name, baseGroupId);
+    return { path, content: serviceStub(name, pkg, baseGroupId, fields) };
+  }
+
+  const stubs: Record<Exclude<StubType, 'model' | 'service'>, () => StubResult> = {
     controller: () => {
       const pkg = getPackageName(baseGroupId, 'controller');
       const path = `${getPackagePath(baseGroupId, 'controller')}/${name}Controller.java`;
       return { path, content: controllerStub(name, pkg, baseGroupId) };
-    },
-    model: () => {
-      const pkg = getPackageName(baseGroupId, 'model');
-      const path = `${getPackagePath(baseGroupId, 'model')}/${name}.java`;
-      return { path, content: modelStub(name, pkg) };
-    },
-    service: () => {
-      const pkg = getPackageName(baseGroupId, 'service');
-      const path = `${getPackagePath(baseGroupId, 'service')}/${name}Service.java`;
-      return { path, content: serviceStub(name, pkg, baseGroupId) };
     },
     repository: () => {
       const pkg = getPackageName(baseGroupId, 'repository');
@@ -63,7 +66,7 @@ export async function getStub(type: StubType, name: string): Promise<StubResult>
     }),
   };
 
-  return stubs[type]();
+  return stubs[type as Exclude<StubType, 'model' | 'service'>]();
 }
 
 export async function getApiStubs(name: string): Promise<StubResult[]> {
@@ -72,14 +75,16 @@ export async function getApiStubs(name: string): Promise<StubResult[]> {
     throw new Error('pom.xml não encontrado ou groupId ausente.');
   }
 
+  const fields = await parseMigrationFields(name, groupId);
+
   return [
     {
       path: `${getPackagePath(groupId, 'model')}/${name}.java`,
-      content: modelStub(name, getPackageName(groupId, 'model')),
+      content: modelStub(name, getPackageName(groupId, 'model'), fields),
     },
     {
       path: `${getPackagePath(groupId, 'dto')}/${name}DTO.java`,
-      content: dtoStub(name, getPackageName(groupId, 'dto')),
+      content: dtoStub(name, getPackageName(groupId, 'dto'), fields),
     },
     {
       path: `${getPackagePath(groupId, 'repository')}/${name}Repository.java`,
@@ -87,7 +92,7 @@ export async function getApiStubs(name: string): Promise<StubResult[]> {
     },
     {
       path: `${getPackagePath(groupId, 'service')}/${name}Service.java`,
-      content: serviceStub(name, getPackageName(groupId, 'service'), groupId),
+      content: serviceStub(name, getPackageName(groupId, 'service'), groupId, fields),
     },
     {
       path: `${getPackagePath(groupId, 'controller')}/${name}Controller.java`,
@@ -96,11 +101,12 @@ export async function getApiStubs(name: string): Promise<StubResult[]> {
   ];
 }
 
-// ---- Stubs com Lombok e imports corretos ----
+// ---- Stubs ----
 
 function controllerStub(name: string, pkg: string, baseGroupId: string): string {
   const serviceImport = `${baseGroupId}.service.${name}Service`;
   const dtoImport = `${baseGroupId}.dto.${name}DTO`;
+  const varName = name.toLowerCase();
 
   return `package ${pkg};
 
@@ -112,41 +118,45 @@ import org.springframework.http.ResponseEntity;
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/${name.toLowerCase()}s")
+@RequestMapping("/api/${varName}s")
 @RequiredArgsConstructor
 public class ${name}Controller {
 
-  private final ${name}Service ${name.toLowerCase()}Service;
+  private final ${name}Service ${varName}Service;
 
   @GetMapping
   public ResponseEntity<List<${name}DTO>> findAll() {
-    return ResponseEntity.ok(${name.toLowerCase()}Service.findAll());
+    return ResponseEntity.ok(${varName}Service.findAll());
   }
 
   @GetMapping("/{id}")
   public ResponseEntity<${name}DTO> findById(@PathVariable Long id) {
-    return ResponseEntity.ok(${name.toLowerCase()}Service.findById(id));
+    return ResponseEntity.ok(${varName}Service.findById(id));
   }
 
   @PostMapping
   public ResponseEntity<${name}DTO> create(@RequestBody ${name}DTO dto) {
-    return ResponseEntity.ok(${name.toLowerCase()}Service.create(dto));
+    return ResponseEntity.status(201).body(${varName}Service.create(dto));
   }
 
   @PutMapping("/{id}")
   public ResponseEntity<${name}DTO> update(@PathVariable Long id, @RequestBody ${name}DTO dto) {
-    return ResponseEntity.ok(${name.toLowerCase()}Service.update(id, dto));
+    return ResponseEntity.ok(${varName}Service.update(id, dto));
   }
 
   @DeleteMapping("/{id}")
   public ResponseEntity<Void> delete(@PathVariable Long id) {
-    ${name.toLowerCase()}Service.delete(id);
+    ${varName}Service.delete(id);
     return ResponseEntity.noContent().build();
   }
 }`;
 }
 
-function modelStub(name: string, pkg: string): string {
+function modelStub(name: string, pkg: string, fields: string[] = []): string {
+  const body = fields.length > 0
+    ? fields.join('\n\n')
+    : '  // TODO: add fields';
+
   return `package ${pkg};
 
 import jakarta.persistence.*;
@@ -163,11 +173,15 @@ public class ${name} {
   @GeneratedValue(strategy = GenerationType.IDENTITY)
   private Long id;
 
-  // TODO: add fields
+${body}
 }`;
 }
 
-function dtoStub(name: string, pkg: string): string {
+function dtoStub(name: string, pkg: string, fields: string[] = []): string {
+  const body = fields.length > 0
+    ? fields.join('\n\n')
+    : '  // TODO: add fields';
+
   return `package ${pkg};
 
 import lombok.*;
@@ -179,50 +193,91 @@ public class ${name}DTO {
 
   private Long id;
 
-  // TODO: add fields
+${body}
 }`;
 }
 
-function serviceStub(name: string, pkg: string, baseGroupId: string): string {
+function serviceStub(name: string, pkg: string, baseGroupId: string, fields: string[] = []): string {
   const repoImport = `${baseGroupId}.repository.${name}Repository`;
+  const modelImport = `${baseGroupId}.model.${name}`;
   const dtoImport = `${baseGroupId}.dto.${name}DTO`;
+  const varName = name.toLowerCase();
+
+  // Gera o toDTO() mapeando campo a campo
+  const toDTOLines = fields.map(f => {
+    const fieldName = f.trim().split(' ')[2].replace(';', '');
+    const cap = fieldName.charAt(0).toUpperCase() + fieldName.slice(1);
+    return `    dto.set${cap}(${varName}.get${cap}());`;
+  }).join('\n');
+
+  // Gera o toEntity() mapeando campo a campo
+  const toEntityLines = fields.map(f => {
+    const fieldName = f.trim().split(' ')[2].replace(';', '');
+    const cap = fieldName.charAt(0).toUpperCase() + fieldName.slice(1);
+    return `    entity.set${cap}(dto.get${cap}());`;
+  }).join('\n');
 
   return `package ${pkg};
 
 import ${repoImport};
+import ${modelImport};
 import ${dtoImport};
 import lombok.*;
 import org.springframework.stereotype.Service;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.server.ResponseStatusException;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
 public class ${name}Service {
 
-  private final ${name}Repository ${name.toLowerCase()}Repository;
+  private final ${name}Repository ${varName}Repository;
 
   public List<${name}DTO> findAll() {
-    // TODO: implement
-    return List.of();
+    return ${varName}Repository.findAll()
+      .stream()
+      .map(this::toDTO)
+      .collect(Collectors.toList());
   }
 
   public ${name}DTO findById(Long id) {
-    // TODO: implement
-    return new ${name}DTO();
+    ${name} ${varName} = ${varName}Repository.findById(id)
+      .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "${name} not found"));
+    return toDTO(${varName});
   }
 
   public ${name}DTO create(${name}DTO dto) {
-    // TODO: implement
-    return dto;
+    ${name} ${varName} = toEntity(dto);
+    return toDTO(${varName}Repository.save(${varName}));
   }
 
   public ${name}DTO update(Long id, ${name}DTO dto) {
-    // TODO: implement
-    return dto;
+    ${varName}Repository.findById(id)
+      .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "${name} not found"));
+    ${name} ${varName} = toEntity(dto);
+    ${varName}.setId(id);
+    return toDTO(${varName}Repository.save(${varName}));
   }
 
   public void delete(Long id) {
-    // TODO: implement
+    ${varName}Repository.findById(id)
+      .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "${name} not found"));
+    ${varName}Repository.deleteById(id);
+  }
+
+  private ${name}DTO toDTO(${name} ${varName}) {
+    ${name}DTO dto = new ${name}DTO();
+    dto.setId(${varName}.getId());
+${toDTOLines}
+    return dto;
+  }
+
+  private ${name} toEntity(${name}DTO dto) {
+    ${name} entity = new ${name}();
+${toEntityLines}
+    return entity;
   }
 }`;
 }
@@ -296,11 +351,7 @@ spring.jpa.open-in-view=false
 
 # H2 Console
 spring.h2.console.enabled=true
-spring.h2.console.path=/h2-console
-
-# Flyway
-spring.flyway.enabled=true
-spring.flyway.locations=classpath:db/migration`,
+spring.h2.console.path=/h2-console`,
 
     mysql: `# App
 spring.application.name=app
@@ -315,11 +366,7 @@ spring.datasource.password=
 # JPA
 spring.jpa.show-sql=true
 spring.jpa.database-platform=org.hibernate.dialect.MySQLDialect
-spring.jpa.open-in-view=false
-
-# Flyway
-spring.flyway.enabled=true
-spring.flyway.locations=classpath:db/migration`,
+spring.jpa.open-in-view=false`,
 
     postgres: `# App
 spring.application.name=app
@@ -334,11 +381,7 @@ spring.datasource.password=
 # JPA
 spring.jpa.show-sql=true
 spring.jpa.database-platform=org.hibernate.dialect.PostgreSQLDialect
-spring.jpa.open-in-view=false
-
-# Flyway
-spring.flyway.enabled=true
-spring.flyway.locations=classpath:db/migration`,
+spring.jpa.open-in-view=false`,
   };
 
   const config = configs[driver.toLowerCase()];
